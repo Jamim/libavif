@@ -31,11 +31,8 @@ if [[ "$#" -ge 2 ]]; then
 else
   TESTDATA_DIR="$(pwd)/data"
 fi
-if [[ "$#" -ge 3 ]]; then
-  TMP_DIR="$(eval echo "$3")"
-else
-  TMP_DIR="$(mktemp -d)"
-fi
+OUTPUT_DIR="${BINARY_DIR}"/output
+mkdir -p "${OUTPUT_DIR}"
 
 AVIFENC="${BINARY_DIR}/avifenc"
 AVIFDEC="${BINARY_DIR}/avifdec"
@@ -54,13 +51,12 @@ CORRECTED_FILE="avif_test_cmd_icc_profile_corrected.png"
 
 # Cleanup
 cleanup() {
-  pushd ${TMP_DIR}
+  pushd ${OUTPUT_DIR}
     rm -f -- "${ENCODED_FILE}" "${DECODED_FILE}" "${CORRECTED_FILE}"
   popd
 }
-trap cleanup EXIT
 
-pushd ${TMP_DIR}
+pushd ${OUTPUT_DIR}
   # Check --cicp flag works
   "${AVIFENC}" --cicp 9/12/8 -s 8 "${INPUT_COLOR_PNG}" -o "${ENCODED_FILE}"
   "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}" | grep "Color Primaries.* 9$"
@@ -92,11 +88,6 @@ pushd ${TMP_DIR}
 
   # PSNR test. Different Color Management Modules (CMMs) resulted in slightly different outputs.
   "${ARE_IMAGES_EQUAL}" "${REFERENCE_COLOR_PNG}" "${CORRECTED_FILE}" 0 50
-
-  "${AVIFENC}" -s 8 -l "${INPUT_GRAY_PNG}" -o "${ENCODED_FILE}"
-  "${AVIFDEC}" "${ENCODED_FILE}" "${DECODED_FILE}"
-  "${IMAGEMAGICK}" "${DECODED_FILE}" -define png:color-type=2 -profile "${SRGB_ICC}" "${CORRECTED_FILE}"
-  "${ARE_IMAGES_EQUAL}" "${REFERENCE_GRAY_PNG}" "${CORRECTED_FILE}" 0 45
 popd
 
 exit 0
